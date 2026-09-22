@@ -3,11 +3,39 @@
 
 #include "MyGameInstance.h"
 
+UMyGameInstance::UMyGameInstance()
+{
+	// 기본값 설정
+	// 생성자에서 설정하는 기본 값은 CDO 템플릿 객체에 저장
+	SchoolName = TEXT("기본 학교");
+}
+
 void UMyGameInstance::Init()
 {
 	Super::Init();
 
-	// Output Log
+	// 클래스 정보 가져오기 ======================================================================================
+	UClass* ClassRuntime = GetClass();
+	UClass* ClassCompile = UMyGameInstance::StaticClass();
+
+	// 두 정보가 같은지를 비교 = assert
+	//check(ClassRuntime != ClassCompile);
+	//ensure(ClassRuntime != ClassCompile);
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+	UE_LOG(LogTemp, Log, TEXT("학교 이름을 담당하는 클래스 이름: %s"), *ClassRuntime->GetName());
+
+	SchoolName = TEXT("Soul");
+
+	UE_LOG(LogTemp, Log, TEXT("학교 이름: %s"), *SchoolName);
+
+	UE_LOG(LogTemp, Log, TEXT("학교 이름 기본값: %s"), *GetClass()->GetDefaultObject<UMyGameInstance>()->SchoolName);
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+
+	// Output Log ==============================================================================================
 	// Unreal use UTF16 -> WCHAR
 	// 각종 타입으로 변경할 수 있는 헬퍼 함수 제공
 	//UE_LOG(LogTemp, Log, TEXT("Hello Unreal"));
