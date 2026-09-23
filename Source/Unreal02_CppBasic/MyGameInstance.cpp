@@ -2,6 +2,10 @@
 
 
 #include "MyGameInstance.h"
+#include "Student.h"
+#include "Teacher.h"
+#include "Staff.h"
+#include "Card.h"
 
 UMyGameInstance::UMyGameInstance()
 {
@@ -81,4 +85,100 @@ void UMyGameInstance::Init()
 	FName Key02(TEXT("pelvis"));
 
 	UE_LOG(LogTemp, Log, TEXT("FName 비교 결과: %s"), (Key01 == Key02 ? TEXT("같음") : TEXT("다름")));
+
+	// ====================================================================================================
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+	// 학생 / 선생님 객체 생성
+	TArray<UPerson*> Persons =
+	{
+		NewObject<UStudent>(),
+		NewObject<UTeacher>(),
+		NewObject<UStaff>()
+	};
+
+	// 범위 기반 루프 할용 이름 출력
+	for (const auto Person : Persons)
+	{
+		UE_LOG(LogTemp, Log, TEXT("구성원 이름: %s"), *Person->GetName());
+	}
+
+	// 인터페이스 구현 여부에 따른 수업 참여 구분
+	// 구현 여부 확인 방법 -> 해당 인터페이스로 형변환(다운 캐스팅)
+	// 다운 캐스팅 RTTI
+	for (const auto Person : Persons)
+	{
+		// 형변환을 통한 인터페이스 구현 여부 확인
+		ILessonInterface* LessonInterface = Cast<ILessonInterface>(Person);
+
+		// 형변환에 성공했다면 -> 구현한 경우
+		if (LessonInterface)
+		{
+			UE_LOG(LogTemp, Log, TEXT("%s님은 수업에 참여하실수 있습니다."), *Person->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("%s님은 수업에 참여하실수 없습니다."), *Person->GetName());
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+	// 학생/선생님 객체 생성.
+	UStudent* Student = NewObject<UStudent>();
+	UTeacher* Teacher = NewObject<UTeacher>();
+
+	// 학생 클래스의 Getter 사용
+	Student->SetName(TEXT("학생01"));
+	UE_LOG(LogTemp, Log, TEXT("새로운 학생 이름: %s"), *Student->GetName());
+
+	// 언리얼의 리플렉션 시스템을 활용해서 프로퍼티 정보 가져오기
+	FString CurrentTeacherName;
+	FProperty* NameProperty = UTeacher::StaticClass()->FindPropertyByName(TEXT("Name"));
+	if (NameProperty)
+	{
+		NameProperty->GetValue_InContainer(Teacher, &CurrentTeacherName);
+		UE_LOG(LogTemp, Log, TEXT("현재 선생님 이름: %s"), *CurrentTeacherName);
+
+		// 새로운 이름 설정
+		FString NewTeacherName(TEXT("NewTeacherName"));
+		NameProperty->SetValue_InContainer(Teacher, &NewTeacherName);
+		UE_LOG(LogTemp, Log, TEXT("새로운 선생님 이름: %s"), *Teacher->GetName());
+	}
+
+	// 함수 호출
+	//Student->DoLesson();
+
+	// 리플렉션을 통한 호출
+	UFunction* DoLessonFunction = Teacher->GetClass()->FindFunctionByName(TEXT("DoLesson"));
+
+	if (DoLessonFunction)
+	{
+		Teacher->ProcessEvent(DoLessonFunction, nullptr);
+	}
+
+	// 인터페이스 구현 여부에 따른 수업 참여 구분
+	// 구현 여부를 확인하는 방법 -> 해당 인터페이스 형변환(다운 캐스팅)
+
+	// 구성원의 카드 타입 출력
+	for (const auto Person : Persons)
+	{
+		const UCard* OwnCard = Person->GetCard();
+		ensure(OwnCard);
+
+		//OwnCard->GetCardType();
+
+		const UEnum* CardEnumType = FindObject<UEnum>(nullptr, TEXT("/Script/Unreal02_CppBasic.ECardType"));
+		if (CardEnumType)
+		{
+			// GetDisplayNameTextByValue 함수는 FText를 반환함
+			// FString으로 변환할 때는 ToString 함수 사용
+			FString CardMetaData = CardEnumType->GetDisplayNameTextByValue((int64)OwnCard->GetCardType()).ToString();
+
+			UE_LOG(LogTemp, Log, TEXT("%s님이 소유한 카드 종류: %s"), *Person->GetName(), *CardMetaData);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
 }
