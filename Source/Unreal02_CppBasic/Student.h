@@ -18,6 +18,8 @@ class UNREAL02_CPPBASIC_API UStudent : public UPerson, public ILessonInterface
 public:
 	UStudent();
 
+	// 알림 메시지를 수신할 함수 선언.
+	void GetNotification(const FString& School, const FString& NewCourseInfo);
 
 private:
 	virtual void DoLesson() override;
