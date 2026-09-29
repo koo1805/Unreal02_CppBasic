@@ -3,3 +3,11 @@
 
 #include "MyObject.h"
 
+void UMyObject::Serialize(FArchive& Ar)
+{
+	Super::Serialize(Ar);
+
+	// 직렬화
+	Ar << Order;
+	Ar << Name;
+}

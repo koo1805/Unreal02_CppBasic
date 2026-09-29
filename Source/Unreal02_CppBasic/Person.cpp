@@ -14,6 +14,11 @@ UPerson::UPerson()
 	Card = CreateDefaultSubobject<UCard>(TEXT("NAME_Card"));
 }
 
+void UPerson::Serialize(FArchive& Ar)
+{
+	Super::Serialize(Ar);
+}
+
 //void UPerson::DoLesson()
 //{
 //	UE_LOG(LogTemp, Log, TEXT("%s님이 수업에 참여합니다."), *Name);

@@ -8,7 +8,9 @@
 #include "Card.h"
 #include "CourseInfo.h"
 #include "StudentManager.h"
+#include "MyObject.h"
 #include <Algo/Accumulate.h>
+#include <JsonObjectConverter.h>
 
 // 이름 값을 랜덤으로 생성하는 함수
 FString MakeRandomName()
@@ -395,6 +397,190 @@ void UMyGameInstance::Init()
 
 	// StudentManager 객체 생성
 	StudentManager = new FStudentManager(NewObject<UStudent>());
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+	// 객체 생성
+	FStudentData RawDataSource(TEXT("ㅇㅣㄹㅡㅁ"), 123);
+
+	// 파일로 다루기 위해 경로 설정
+	const FString SavedPath = FPaths::Combine(FPlatformMisc::ProjectDir(), TEXT("Saved"));
+
+	// 경로 출력
+	UE_LOG(LogTemp, Log, TEXT("저장할 파일 폴더: %s"), *SavedPath);
+
+	// 직렬화 구간
+	{
+		// 저장할 파일 이름
+		const FString RawDataFileName(TEXT("RawData.bin"));
+
+		// 파일 이름을 포함한 최종 경로
+		FString RawDataAbsolutePath = FPaths::Combine(SavedPath, RawDataFileName);
+
+		// 경로 출력 (테스트)
+		UE_LOG(LogTemp, Log, TEXT("저장할 파일 전체 경로: %s"), *RawDataAbsolutePath);
+
+		// 경로 정리
+		FPaths::MakeStandardFilename(RawDataAbsolutePath);
+
+		// 변경된 경로 출력
+		UE_LOG(LogTemp, Log, TEXT("변경된 파일 전체 경로: %s"), *RawDataAbsolutePath);
+
+		/* 오브젝트 직렬화
+		// 1. 직렬화 처리를 위한 아카이브 생성
+		FArchive* RawFileWriteAr = IFileManager::Get().CreateFileWriter(*RawDataAbsolutePath);
+		if (RawFileWriteAr)
+		{
+			// 2. 아카이브에 오브젝트 직렬화
+			*RawFileWriteAr << RawDataSource;
+
+			// 파일 닫기
+			RawFileWriteAr->Close();
+
+			// 사용한 리소스 해제
+			delete RawFileWriteAr;
+			RawFileWriteAr = nullptr;
+		}	//*/
+
+		// 오브젝트 역직렬화
+		FArchive* RawFileReaderAr = IFileManager::Get().CreateFileReader(*RawDataAbsolutePath);
+
+		// 파일로부터 데이터를 복원할 객체
+		FStudentData RawDataDeserialized;
+
+		if (RawFileReaderAr)
+		{
+			*RawFileReaderAr << RawDataDeserialized;
+
+			// 파일 닫기
+			RawFileReaderAr->Close();
+
+			// 해제
+			delete RawFileReaderAr;
+			RawFileReaderAr = nullptr;
+
+			// 로드한 데이터 출력
+			UE_LOG(LogTemp, Log, TEXT("[RawData] 이름: %s, 순번: %d"), *RawDataDeserialized.Name, RawDataDeserialized.Order);
+		}
+
+	}	
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+	//* 언리얼 오브젝트 직렬화
+	StudentSrc = NewObject<UMyObject>();
+	StudentSrc->SetOrder(100);
+	StudentSrc->SetName(TEXT("Unreal오브젝트직렬화"));
+	{
+		// 파일 이름
+		const FString& ObjectDataFileName(TEXT("ObjectData.bin"));
+
+		// 최종 경로 설정
+		FString ObjectDataPath = FPaths::Combine(SavedPath, ObjectDataFileName);
+		FPaths::MakeStandardFilename(ObjectDataPath);
+
+		// 직렬화
+		// 1. 메모리 직렬화
+		TArray<uint8> Buffer;
+		FMemoryWriter MemoryWriter(Buffer);
+		
+		// 오브젝트 직렬화
+		StudentSrc->Serialize(MemoryWriter);
+
+		// 2. 파일에 기록
+		TUniquePtr<FArchive> FileWriter = TUniquePtr<FArchive>(IFileManager::Get().CreateFileWriter(*ObjectDataPath));
+
+		if (FileWriter)
+		{
+			// 기록
+			*FileWriter << Buffer;
+
+			// 파일 닫기
+			FileWriter->Close();
+		}
+
+		//* 역직렬화
+		// 1. 파일 로드 -> 바이트 배열
+		TArray<uint8> BufferFromFile;
+		TUniquePtr<FArchive> FileReader = TUniquePtr<FArchive>(IFileManager::Get().CreateFileReader(*ObjectDataPath));
+
+		if (FileReader)
+		{
+			// 파일에 로드한 데이터를 바이트 배열에 저장
+			*FileReader << BufferFromFile;
+
+			// 파일 닫기
+			FileReader->Close();
+
+			// 2. 바이트 배열 -> 오브젝트로 복원
+			FMemoryReader MemoryReader(BufferFromFile);
+
+			// 테스트를 위한 임시 객체 생성
+			UMyObject* NewStudent = NewObject<UMyObject>();
+			NewStudent->Serialize(MemoryReader);
+
+			// 로드한 데이터 출력
+			UE_LOG(LogTemp, Log, TEXT("[Ureal ObjectData] 이름: %s, 순번: %d"), *NewStudent->GetName(),NewStudent->GetOrder());
+		}
+	}	//*/
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+	// Json 직렬화
+	{
+		// Object -> Json Object -> Json 문자열 -> 파일로 기록
+
+		// 파일 이름
+		const FString JsonDataFileName(TEXT("StudentJsonData.txt"));
+
+		// 경로
+		FString JsonDataPath = FPaths::Combine(SavedPath, JsonDataFileName);
+
+		// 경로 정리
+		FPaths::MakeStandardFilename(JsonDataPath);
+
+		// JsonObject 공유 레퍼런스 객체 생성
+		TSharedRef<FJsonObject> JsonObject = MakeShared<FJsonObject>();
+
+		// 언리얼 오브젝트 -> Json 오브젝트
+		FJsonObjectConverter::UStructToJsonObject(
+			StudentSrc->GetClass(),
+			StudentSrc,
+			JsonObject
+		);
+
+		// JsonObject -> Json 문자열
+		FString JsonString;
+		TSharedRef<TJsonWriter<TCHAR>> JsonWriter
+			= TJsonWriterFactory<TCHAR>::Create(&JsonString);
+
+		// 직렬화: JsonObject -> Json 문자열
+		if (FJsonSerializer::Serialize(JsonObject, JsonWriter))
+		{
+			// Json 문자열 -> 파일로 기록
+			FFileHelper::SaveStringToFile(JsonString, *JsonDataPath);
+		}
+
+		// 역직렬화
+		// 파일 로드 -> Json 문자열 -> Json Object -> Object
+
+		// 1. 파일 로드 -> Json 문자열
+		FString JsonInString;
+		FFileHelper::LoadFileToString(JsonInString, *JsonDataPath);
+
+		// 2. Json 문자열 -> Json Object
+		TSharedRef<TJsonReader<TCHAR>> JsonReader = TJsonReaderFactory<TCHAR>::Create(JsonInString);
+
+		TSharedPtr<FJsonObject> JsonObjectDest;
+		if (FJsonSerializer::Deserialize(JsonReader, JsonObjectDest))
+		{
+			UMyObject* JsonStudentDest = NewObject<UMyObject>();
+			if (FJsonObjectConverter::JsonObjectToUStruct(JsonObjectDest.ToSharedRef(), JsonStudentDest->GetClass(), JsonStudentDest))
+			{
+				UE_LOG(LogTemp, Log, TEXT("[JSon Unreal ObjectData] 이름: %s, 순번: %d"), *JsonStudentDest->GetName(), JsonStudentDest->GetOrder());
+			}
+		}
+	}
 
 	UE_LOG(LogTemp, Log, TEXT("============================================"));
 }

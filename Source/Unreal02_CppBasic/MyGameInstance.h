@@ -37,6 +37,15 @@ struct FStudentData
 		return GetTypeHash(InStudentData.Order);
 	}
 
+	// 연산자 오버로딩 - 편의 목적
+	friend FArchive& operator<<(FArchive& Archive, FStudentData& InStudentData)
+	{
+		// 직렬화
+		Archive << InStudentData.Order;
+		Archive << InStudentData.Name;
+		return Archive;
+	}
+
 	UPROPERTY()
 	FString Name;
 
@@ -90,4 +99,7 @@ private:
 	TArray<TObjectPtr<UStudent>> PropStudents;
 
 	FStudentManager* StudentManager = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<class UMyObject> StudentSrc;
 };

@@ -24,6 +24,8 @@ public:
 	//UFUNCTION()
 	//virtual void DoLesson();
 
+	virtual void Serialize(FArchive& Ar) override;
+
 	// Getter/Setter
 	FORCEINLINE const FString& GetName() { return Name; }
 	FORCEINLINE void SetName(const FString& InName) { Name = InName; }

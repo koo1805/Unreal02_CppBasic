@@ -14,4 +14,20 @@ class UNREAL02_CPPBASIC_API UMyObject : public UObject
 {
 	GENERATED_BODY()
 	
+public:
+	virtual void Serialize(FArchive& Ar) override;
+
+	// Getter | Setter
+	FORCEINLINE int32 GetOrder() const { return Order; }
+	FORCEINLINE void SetOrder(int32 InOrder) { Order = InOrder; }
+
+	FORCEINLINE const FString& GetName() const { return Name; }
+	FORCEINLINE void SetName(const FString& InName) { Name = InName; }
+
+private:
+	UPROPERTY()
+	int32 Order;
+
+	UPROPERTY()
+	FString Name;
 };
