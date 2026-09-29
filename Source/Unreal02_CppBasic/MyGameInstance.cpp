@@ -7,6 +7,7 @@
 #include "Staff.h"
 #include "Card.h"
 #include "CourseInfo.h"
+#include "StudentManager.h"
 #include <Algo/Accumulate.h>
 
 // 이름 값을 랜덤으로 생성하는 함수
@@ -26,6 +27,30 @@ FString MakeRandomName()
 
 	// 이름 문자열로 변환해서 반환
 	return RandArray.GetData();
+}
+
+void CheckUObjectIsValid(const UObject* InObject, const FString& InTag)
+{
+	if (InObject->IsValidLowLevel())
+	{
+		UE_LOG(LogTemp, Log, TEXT("[%s] 유효한 언리얼 오브젝트"), *InTag);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("[%s] 유효하지 않은 언리얼 오브젝트"), *InTag);
+	}
+}
+
+void CheckUObjectIsNull(const UObject* InObject, const FString& InTag)
+{
+	if (nullptr == InObject)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[%s] nullptr 언리얼 오브젝트"), *InTag);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("[%s] nullptr이 아닌 언리얼 오브젝트"), *InTag);
+	}
 }
 
 UMyGameInstance::UMyGameInstance()
@@ -361,4 +386,41 @@ void UMyGameInstance::Init()
 	UE_LOG(LogTemp, Log, TEXT("학생 데이터 셋에 저장된 데이터 수: %d"), StudentsSet.Num());
 
 	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+	NonPropStudent = NewObject<UStudent>();
+	PropStudent = NewObject<UStudent>();
+
+	NonPropStudents.Add(NewObject<UStudent>());
+	PropStudents.Add(NewObject<UStudent>());
+
+	// StudentManager 객체 생성
+	StudentManager = new FStudentManager(NewObject<UStudent>());
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
+}
+
+void UMyGameInstance::Shutdown()
+{
+	Super::Shutdown();
+
+	const UStudent* StudentInManager = StudentManager->GetStudent();
+
+	// 메모리 정리
+	delete StudentManager;
+	StudentManager = nullptr;
+
+	CheckUObjectIsNull(StudentInManager, TEXT("StudentInManager"));
+	CheckUObjectIsValid(StudentInManager, TEXT("StudentInManager"));
+
+	CheckUObjectIsNull(NonPropStudent, TEXT("NonPropStudent"));
+	CheckUObjectIsValid(NonPropStudent, TEXT("NonPropStudent"));
+
+	CheckUObjectIsNull(PropStudent, TEXT("PropStudent"));
+	CheckUObjectIsValid(PropStudent, TEXT("PropStudent"));
+
+	CheckUObjectIsNull(NonPropStudents[0], TEXT("NonPropStudents"));
+	CheckUObjectIsValid(NonPropStudents[0], TEXT("NonPropStudents"));
+
+	CheckUObjectIsNull(PropStudents[0], TEXT("PropStudents"));
+	CheckUObjectIsValid(PropStudents[0], TEXT("PropStudents"));
 }

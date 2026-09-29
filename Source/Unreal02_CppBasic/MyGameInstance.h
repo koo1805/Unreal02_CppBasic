@@ -6,6 +6,9 @@
 #include "Engine/GameInstance.h"
 #include "MyGameInstance.generated.h"
 
+// 전방 선언
+class UStudent;
+class FStudentManager;
 
 // 학생 데이터를 관리할 구조체 선언
 USTRUCT()
@@ -56,6 +59,8 @@ public:
 private:
 	virtual void Init() override;
 
+	virtual void Shutdown() override;
+
 private:
 	UPROPERTY()
 	FString SchoolName;
@@ -72,4 +77,17 @@ private:
 
 	// 키/값을 쌍으로 맵 선언
 	TMap<int32, FString> StudentsMap;
+
+	//GC
+	TObjectPtr<UStudent> NonPropStudent;
+
+	UPROPERTY()
+	TObjectPtr<UStudent> PropStudent;
+
+	TArray<TObjectPtr<UStudent>> NonPropStudents;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStudent>> PropStudents;
+
+	FStudentManager* StudentManager = nullptr;
 };
