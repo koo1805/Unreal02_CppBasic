@@ -11,6 +11,7 @@
 #include "MyObject.h"
 #include <Algo/Accumulate.h>
 #include <JsonObjectConverter.h>
+#include <UObject/SavePackage.h>
 
 // 이름 값을 랜덤으로 생성하는 함수
 FString MakeRandomName()
@@ -55,11 +56,33 @@ void CheckUObjectIsNull(const UObject* InObject, const FString& InTag)
 	}
 }
 
+// Student 정보 출력 함수
+void PrintStudentInfo(const UMyObject* InStudent, const FString& InTag)
+{
+	// 출력
+	UE_LOG(LogTemp, Log, TEXT("[%s] 이름: %s, 순번: %d"), *InTag, *InStudent->GetName(), InStudent->GetOrder());
+}
+
 UMyGameInstance::UMyGameInstance()
 {
 	// 기본값 설정
 	// 생성자에서 설정하는 기본 값은 CDO 템플릿 객체에 저장
 	SchoolName = TEXT("기본 학교");
+
+	// 오브젝트 경로 만들기
+	// 오브젝트 경로(ObjectPath): 패키지경로.에셋이름
+	const FString TopSoftObjectPath = FString::Printf(TEXT("%s.%s"), *PackageName, *AssetName);
+
+	// 로드
+	static ConstructorHelpers::FObjectFinder<UMyObject> UASSET_TopStudent(
+		*TopSoftObjectPath
+	);
+
+	// 로드 성공시 로그 출력
+	if (UASSET_TopStudent.Succeeded())
+	{
+		PrintStudentInfo(UASSET_TopStudent.Object, TEXT("Constructor"));
+	}
 }
 
 void UMyGameInstance::Init()
@@ -583,6 +606,43 @@ void UMyGameInstance::Init()
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+	// 패키지 저장 및 로드
+	SaveStudentPackage();
+	LoadStudentPackage();
+
+	LoadStudentObject();
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
+
+	// 애셋 스트리밍을 통한 애셋 로드
+	const FString TopSoftObjectPath = FString::Printf(TEXT("%s.%s"), *PackageName, *AssetName);
+
+	// 비동기 애셋 로드 요청
+	Handle = StreamableManager.RequestAsyncLoad(
+		TopSoftObjectPath,
+		// 아래 람다는 로드가 완료되면 실행됨
+		[&]()
+		{
+			// 제대로 로드 됐는지 확인
+			if (Handle.IsValid() && Handle->HasLoadCompleted())
+			{
+				// Student 객체 불러오기
+				UMyObject* TopStudent = Cast<UMyObject>(Handle->GetLoadedAsset());
+				if (TopStudent)
+				{
+					PrintStudentInfo(TopStudent, TEXT("AsyncLoad"));
+				}
+
+				// 사용한 핸들 해제 및 초기화
+				Handle->ReleaseHandle();
+				Handle.Reset();
+			}
+
+		}
+	);
+
+	UE_LOG(LogTemp, Log, TEXT("============================================"));
 }
 
 void UMyGameInstance::Shutdown()
@@ -609,4 +669,72 @@ void UMyGameInstance::Shutdown()
 
 	CheckUObjectIsNull(PropStudents[0], TEXT("PropStudents"));
 	CheckUObjectIsValid(PropStudents[0], TEXT("PropStudents"));
+}
+
+void UMyGameInstance::SaveStudentPackage() const
+{
+	// 패키지 생성
+	// 패키지 생성할 때 플래그를 지정해주어야 함
+	UPackage* StudentPackage = CreatePackage(*PackageName);
+	EObjectFlags ObjectFlag = RF_Public | RF_Standalone;
+
+	// 패키지 안에 저장할 언리얼 오브젝트 생성
+	UMyObject* TopStudent = NewObject<UMyObject>(StudentPackage, UMyObject::StaticClass(), *AssetName, ObjectFlag);
+
+	// 속성 설정
+	TopStudent->SetName(TEXT("나여"));
+	TopStudent->SetOrder(1);
+
+	// 패키지 저장
+	// 파일 경로 만들기
+	FString PackageFileName = FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension());
+
+	// 경로 값 정리
+	FPaths::MakeStandardFilename(PackageFileName);
+
+	// 저장
+	FSavePackageArgs SaveArgs;
+	SaveArgs.TopLevelFlags = ObjectFlag;
+
+	//UPackage::SavePackage(StudentPackage, TopStudent, *PackageFileName, SaveArgs);
+	if (UPackage::SavePackage(StudentPackage, nullptr, *PackageFileName, SaveArgs))
+	{
+		UE_LOG(LogTemp, Log, TEXT("패키지가 성공적으로 저장됨"));
+	}
+}
+
+void UMyGameInstance::LoadStudentPackage() const
+{
+	// 저장된 패키지 로드
+	UPackage* StudentPackage = ::LoadPackage(nullptr, *PackageName, LOAD_None);
+	if (!StudentPackage)
+	{
+		UE_LOG(LogTemp, Log, TEXT("패키지를 찾을 수 없습니다."));
+		return;
+	}
+
+	// 완전히 로드 처리
+	StudentPackage->FullyLoad();
+
+	// 애셋 - 대표 언리얼 오브젝트 로드
+	UMyObject* TopStudent = FindObject<UMyObject>(StudentPackage, *AssetName);
+	if (TopStudent)
+	{
+		PrintStudentInfo(TopStudent, TEXT("FindObject Asset"));
+	}
+}
+
+void UMyGameInstance::LoadStudentObject() const
+{
+	// 패키지를 로드해두지 않은 상태에서 경로 값을 활용해 언리얼 오브젝트 로드
+	const FString TopSoftObjectPath = FString::Printf(TEXT("%s.%s"), *PackageName, *AssetName);
+
+	// 오브젝트 로드
+	UMyObject* TopStudent = LoadObject<UMyObject>(nullptr, *TopSoftObjectPath);
+
+	// 로드 성공 시 로그 출력
+	if (TopStudent)
+	{
+		PrintStudentInfo(TopStudent, TEXT("LoadObject Asset"));
+	}
 }
